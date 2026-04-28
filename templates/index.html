@@ -263,17 +263,17 @@
     </div>
 
     <script>
-        // 密码输入框限制：只允许大写字母和数字
+        // 密码输入框：允许输入字母和数字，自动转换为大写
         const passwordInput = document.getElementById('password');
         passwordInput.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^A-Z0-9]/g, '').toUpperCase();
+            this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
         });
 
-        // 阻止粘贴非大写字母和数字
+        // 粘贴时也自动转换为大写
         passwordInput.addEventListener('paste', function(e) {
             e.preventDefault();
             const paste = (e.clipboardData || window.clipboardData).getData('text');
-            const filtered = paste.replace(/[^A-Z0-9]/g, '').toUpperCase();
+            const filtered = paste.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             document.execCommand('insertText', false, filtered);
         });
 
