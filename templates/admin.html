@@ -318,6 +318,92 @@
         body.has-bottom-nav {
             padding-bottom: 80px;
         }
+
+        /* 确认弹窗 */
+        .confirm-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+        }
+
+        .confirm-modal.show {
+            display: block;
+        }
+
+        .confirm-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .confirm-dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+            width: 280px;
+            text-align: center;
+        }
+
+        .confirm-title {
+            font-size: 18px;
+            color: #ff4444;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .confirm-message {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-confirm {
+            padding: 10px 24px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+
+        .btn-confirm.danger {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-confirm.danger:hover {
+            background: #ff6666;
+        }
+
+        .btn-confirm.cancel {
+            background: transparent;
+            border: 1px solid #444;
+            color: #888;
+        }
+
+        .btn-confirm.cancel:hover {
+            border-color: #666;
+            color: #fff;
+        }
     </style>
 </head>
 <body class="has-bottom-nav">
@@ -368,6 +454,19 @@
         <a href="/" class="nav-item" data-page="index">首页</a>
         <a href="/upload-page" class="nav-item" data-page="upload">上传</a>
         <a href="/admin" class="nav-item active" data-page="list">列表</a>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div class="confirm-modal" id="confirmModal">
+        <div class="confirm-overlay"></div>
+        <div class="confirm-dialog">
+            <div class="confirm-title">确认删除</div>
+            <div class="confirm-message" id="confirmMessage"></div>
+            <div class="confirm-actions">
+                <button class="btn-confirm danger" id="confirmDeleteBtn">删除</button>
+                <button class="btn-confirm cancel" id="confirmCancelBtn">取消</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -479,9 +578,9 @@
 
         // 删除图片
         async function deleteImage(password, filename) {
-            if (!confirm(`确定要删除图片 "${filename}" 吗？此操作不可恢复。`)) {
-                return;
-            }
+            // 显示自定义确认弹窗
+            const confirmed = await showConfirmModal(`确定要删除 "${filename}" 吗？此操作不可恢复。`);
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`/delete/${password}`, {
@@ -498,6 +597,38 @@
             } catch (e) {
                 showMessage('删除失败', 'error');
             }
+        }
+
+        // 显示确认弹窗（返回 Promise）
+        function showConfirmModal(message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmModal');
+                const msgEl = document.getElementById('confirmMessage');
+                const deleteBtn = document.getElementById('confirmDeleteBtn');
+                const cancelBtn = document.getElementById('confirmCancelBtn');
+
+                msgEl.textContent = message;
+                modal.classList.add('show');
+
+                const cleanup = () => {
+                    modal.classList.remove('show');
+                    deleteBtn.removeEventListener('click', onConfirm);
+                    cancelBtn.removeEventListener('click', onCancel);
+                };
+
+                const onConfirm = () => {
+                    cleanup();
+                    resolve(true);
+                };
+
+                const onCancel = () => {
+                    cleanup();
+                    resolve(false);
+                };
+
+                deleteBtn.addEventListener('click', onConfirm);
+                cancelBtn.addEventListener('click', onCancel);
+            });
         }
 
         // 右滑删除处理
