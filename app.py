@@ -1,4 +1,5 @@
 import os
+import json
 import secrets
 import random
 import string
@@ -12,6 +13,7 @@ app.secret_key = secrets.token_hex(32)
 
 # 配置
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'view_stats.json')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
 ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
@@ -67,6 +69,38 @@ def password_exists(password):
     return None
 
 
+def load_view_stats():
+    """加载查看次数统计"""
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+
+def save_view_stats(stats):
+    """保存查看次数统计"""
+    with open(STATS_FILE, 'w') as f:
+        json.dump(stats, f)
+
+
+def increment_view_count(password):
+    """增加查看次数"""
+    password = password.upper()
+    stats = load_view_stats()
+    stats[password] = stats.get(password, 0) + 1
+    save_view_stats(stats)
+
+
+def get_view_count(password):
+    """获取查看次数"""
+    password = password.upper()
+    stats = load_view_stats()
+    return stats.get(password, 0)
+
+
 @app.route('/')
 def index():
     """首页"""
@@ -112,7 +146,29 @@ def get_image(password):
 
 @app.route('/file/<password>')
 def get_file(password):
-    """获取文件（图片或视频）"""
+    """获取文件（图片或视频）- 增加查看计数"""
+    password = password.upper()
+    file_path = password_exists(password)
+
+    if not file_path:
+        return "文件不存在", 404
+
+    increment_view_count(password)
+
+    from flask import make_response
+    import mimetypes
+
+    filename = os.path.basename(file_path)
+    mime_type, _ = mimetypes.guess_type(filename)
+
+    response = make_response(send_from_directory(app.config['UPLOAD_FOLDER'], filename))
+    response.headers['Content-Type'] = mime_type or 'application/octet-stream'
+    return response
+
+
+@app.route('/preview/<password>')
+def preview_file(password):
+    """预览文件（图片或视频）- 不增加查看计数"""
     password = password.upper()
     file_path = password_exists(password)
 
@@ -201,6 +257,11 @@ def delete_image(password):
 
     try:
         os.remove(image_path)
+        # 删除查看次数统计
+        stats = load_view_stats()
+        if password in stats:
+            del stats[password]
+            save_view_stats(stats)
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -212,6 +273,7 @@ def list_images():
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': '需要管理员权限'}), 401
 
+    stats = load_view_stats()
     images = []
     if os.path.exists(UPLOAD_FOLDER):
         for filename in os.listdir(UPLOAD_FOLDER):
@@ -224,7 +286,8 @@ def list_images():
                         'filename': filename,
                         'password': password,
                         'type': file_type,
-                        'url': url_for('get_file', password=password, _external=True)
+                        'url': url_for('preview_file', password=password, _external=True),
+                        'view_count': stats.get(password, 0)
                     })
                     break
 
