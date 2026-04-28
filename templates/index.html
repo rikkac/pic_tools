@@ -40,6 +40,47 @@
 
         .input-group {
             margin-bottom: 20px;
+            position: relative;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper input[type="text"],
+        .input-wrapper input[type="password"] {
+            padding-right: 50px;
+        }
+
+        .paste-btn {
+            position: absolute;
+            right: 8px;
+            width: auto;
+            min-width: 40px;
+            height: 32px;
+            padding: 0 8px;
+            background: transparent;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .paste-btn:hover {
+            color: #FFD700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .paste-btn:active {
+            color: #FFD700;
+            background: rgba(255, 215, 0, 0.2);
         }
 
         input[type="text"],
@@ -236,13 +277,16 @@
         <div id="message" class="message"></div>
 
         <div class="input-group">
-            <input
-                type="text"
-                id="password"
-                placeholder="请输入图片密码"
-                maxlength="8"
-                autocomplete="off"
-            >
+            <div class="input-wrapper">
+                <input
+                    type="text"
+                    id="password"
+                    placeholder="请输入图片密码"
+                    maxlength="8"
+                    autocomplete="off"
+                >
+                <button class="paste-btn" id="pasteBtn" title="粘贴">粘贴</button>
+            </div>
         </div>
 
         <button class="btn btn-full" id="viewBtn">查看</button>
@@ -275,6 +319,18 @@
             const paste = (e.clipboardData || window.clipboardData).getData('text');
             const filtered = paste.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             document.execCommand('insertText', false, filtered);
+        });
+
+        // 粘贴按钮点击事件
+        document.getElementById('pasteBtn').addEventListener('click', async function() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const filtered = text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                passwordInput.value = filtered;
+                passwordInput.focus();
+            } catch (e) {
+                showMessage('无法读取剪贴板', 'error');
+            }
         });
 
         // 显示消息
