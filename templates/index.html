@@ -184,6 +184,44 @@
             color: #666;
             font-size: 12px;
         }
+
+        /* 底部导航 */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #111;
+            border-top: 1px solid #333;
+            padding: 10px 20px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+
+        .bottom-nav.show {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .nav-item {
+            color: #666;
+            text-decoration: none;
+            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: #FFD700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        /* 为底部导航预留空间 */
+        body.has-bottom-nav {
+            padding-bottom: 80px;
+        }
     </style>
 </head>
 <body>
@@ -215,6 +253,13 @@
     <div class="modal" id="modal">
         <button class="modal-close" id="modalClose">&times;</button>
         <img src="" alt="全屏图片" id="modalImage">
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav" id="bottomNav">
+        <a href="/" class="nav-item active" data-page="index">首页</a>
+        <a href="/upload-page" class="nav-item" data-page="upload">上传</a>
+        <a href="/admin" class="nav-item" data-page="list">列表</a>
     </div>
 
     <script>
@@ -328,6 +373,28 @@
                 document.getElementById('viewBtn').click();
             }
         });
+
+        // 检测登录状态并显示底部导航
+        async function checkLoginAndShowNav() {
+            try {
+                const response = await fetch('/api/check-password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: 'SEAGULL7'})
+                });
+                // 如果能检测管理员密码，说明已登录
+                // 或者直接检查 session
+                // 这里用另一种方式：尝试调用需要管理员权限的 API
+                const adminResponse = await fetch('/api/images');
+                if (adminResponse.status === 200) {
+                    document.getElementById('bottomNav').classList.add('show');
+                    document.body.classList.add('has-bottom-nav');
+                }
+            } catch (e) {
+                // 未登录，不显示导航
+            }
+        }
+        checkLoginAndShowNav();
     </script>
 </body>
 </html>

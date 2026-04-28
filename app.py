@@ -158,5 +158,33 @@ def delete_image(password):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@app.route('/api/images', methods=['GET'])
+def list_images():
+    """获取图片列表（需要管理员权限）"""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': '需要管理员权限'}), 401
+
+    images = []
+    if os.path.exists(UPLOAD_FOLDER):
+        for filename in os.listdir(UPLOAD_FOLDER):
+            if filename.endswith('.jpg'):
+                password = filename[:-4]  # 去掉 .jpg 后缀
+                images.append({
+                    'filename': filename,
+                    'password': password,
+                    'url': url_for('get_image', password=password, _external=True)
+                })
+
+    return jsonify({'success': True, 'images': images})
+
+
+@app.route('/admin')
+def admin_page():
+    """管理员控制台页面"""
+    if not session.get('is_admin'):
+        return redirect(url_for('index'))
+    return render_template('admin.html')
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
