@@ -206,6 +206,28 @@ def logout():
     return jsonify({'success': True})
 
 
+@app.route('/api/clear-all', methods=['POST'])
+def clear_all():
+    """清空所有文件（需要管理员权限）"""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': '需要管理员权限'}), 401
+
+    try:
+        # 删除 uploads 目录下所有文件
+        if os.path.exists(UPLOAD_FOLDER):
+            for filename in os.listdir(UPLOAD_FOLDER):
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+
+        # 清空查看统计
+        save_view_stats({})
+
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/upload', methods=['POST'])
 def upload():
     """上传图片或视频（需要管理员权限）"""

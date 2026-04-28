@@ -459,7 +459,8 @@
         <div class="header">
             <h1>图片管理</h1>
             <div class="header-actions">
-                <button class="btn-small danger" id="logoutBtn">退出登录</button>
+                <button class="btn-small" id="clearAllBtn">清空</button>
+                <button class="btn-small danger" id="logoutBtn">注销</button>
             </div>
         </div>
 
@@ -777,13 +778,33 @@
             });
         }
 
-        // 退出登录
+        // 注销
         document.getElementById('logoutBtn').addEventListener('click', async function() {
             try {
                 await fetch('/logout', { method: 'POST' });
                 window.location.href = '/';
             } catch (e) {
                 showMessage('退出失败', 'error');
+            }
+        });
+
+        // 清空所有文件
+        document.getElementById('clearAllBtn').addEventListener('click', async function() {
+            const confirmed = await showConfirmModal('确定要清空所有文件吗？此操作不可恢复。');
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch('/api/clear-all', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('清空成功');
+                    loadImages();
+                } else {
+                    showMessage(data.message || '清空失败', 'error');
+                }
+            } catch (e) {
+                showMessage('清空失败', 'error');
             }
         });
 
