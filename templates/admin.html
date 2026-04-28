@@ -246,6 +246,28 @@
             border: 1px solid #FFD700;
         }
 
+        /* 弹窗提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 215, 0, 0.95);
+            color: #000;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
         /* 全屏图片模态 */
         .modal {
             display: none;
@@ -443,6 +465,9 @@
 
         <div id="message" class="message"></div>
 
+        <!-- 弹窗提示 -->
+        <div class="toast" id="toast"></div>
+
         <div class="table-header">
             <span>文件列表</span>
             <span class="total-count">总计: <span id="totalCount">0</span></span>
@@ -626,7 +651,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage('删除成功', 'success');
+                    showToast('删除成功');
                     loadImages(); // 刷新列表
                 } else {
                     showMessage(data.message || '删除失败', 'error');
@@ -770,6 +795,16 @@
             setTimeout(() => {
                 msg.className = 'message';
             }, 3000);
+        }
+
+        // 弹窗提示
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1500);
         }
 
         // 页面加载时获取图片列表
