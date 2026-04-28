@@ -213,6 +213,24 @@
             border-radius: 8px;
         }
 
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
         /* 统计信息 */
         .stats {
             display: flex;
@@ -313,6 +331,7 @@
 
     <!-- 全屏图片 -->
     <div class="modal" id="imageModal">
+        <button class="modal-close" id="modalClose">&times;</button>
         <img src="" alt="图片预览" id="modalImage">
     </div>
 
@@ -375,6 +394,11 @@
             modalImage.src = url;
             modal.classList.add('show');
         }
+
+        // 关闭按钮
+        document.getElementById('modalClose').addEventListener('click', function() {
+            document.getElementById('imageModal').classList.remove('show');
+        });
 
         // 点击图片外部关闭
         document.getElementById('imageModal').addEventListener('click', function(e) {
