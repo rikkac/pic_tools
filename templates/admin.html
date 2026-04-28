@@ -97,35 +97,64 @@
             border-bottom: 1px solid #333;
         }
 
-        td {
-            padding: 16px;
+        /* 可滑动的行 */
+        .swipe-row {
+            position: relative;
+            overflow: hidden;
             border-bottom: 1px solid #222;
         }
 
-        tr:last-child td {
+        .swipe-row:last-child {
             border-bottom: none;
         }
 
-        tr:hover {
+        .swipe-content {
+            display: flex;
+            background: #111;
+            transition: transform 0.3s ease;
+            touch-action: pan-y;
+        }
+
+        .swipe-row:hover .swipe-content {
             background: #151515;
+        }
+
+        .swipe-cell {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+        }
+
+        .swipe-cell:nth-child(1) { flex: 2; }
+        .swipe-cell:nth-child(2) { flex: 1; justify-content: center; }
+        .swipe-cell:nth-child(3) { flex: 1; justify-content: center; }
+
+        /* 删除按钮层 - 右侧 */
+        .swipe-delete {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            background: #ff4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .swipe-delete.show {
+            transform: translateX(0);
         }
 
         .filename {
             font-family: monospace;
             color: #FFD700;
             letter-spacing: 1px;
-        }
-
-        .password {
-            font-family: monospace;
-            color: #666;
-            font-size: 12px;
-        }
-
-        .action-btns {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
         }
 
         .view-count {
@@ -147,11 +176,6 @@
         .btn-action:hover {
             border-color: #FFD700;
             color: #FFD700;
-        }
-
-        .btn-action.delete:hover {
-            border-color: #ff4444;
-            color: #ff4444;
         }
 
         /* 空状态 */
@@ -370,19 +394,26 @@
                 }
 
                 tbody.innerHTML = images.map(img => `
-                    <tr>
-                        <td>
-                            <span class="filename" onclick="copyPassword('${img.password}')" style="cursor:pointer;">${img.type === 'video' ? '🎬 ' : '🖼️ '}${img.filename}</span>
-                        </td>
-                        <td class="view-count">${img.view_count || 0}</td>
-                        <td>
-                            <div class="action-btns">
-                                <button class="btn-action" onclick="viewFile('${img.type}', '${img.url}')">查看</button>
-                                <button class="btn-action delete" onclick="deleteImage('${img.password}', '${img.filename}')">删除</button>
+                    <tr class="swipe-row" data-password="${img.password}" data-filename="${img.filename}">
+                        <td colspan="3" style="padding:0;">
+                            <div class="swipe-content">
+                                <div class="swipe-cell">
+                                    <span class="filename" onclick="copyPassword('${img.password}')" style="cursor:pointer;">${img.type === 'video' ? '🎬 ' : '🖼️ '}${img.filename}</span>
+                                </div>
+                                <div class="swipe-cell">
+                                    <span class="view-count">${img.view_count || 0}</span>
+                                </div>
+                                <div class="swipe-cell">
+                                    <button class="btn-action" onclick="viewFile('${img.type}', '${img.url}')">查看</button>
+                                </div>
                             </div>
+                            <div class="swipe-delete" onclick="handleSwipeDelete('${img.password}', '${img.filename}')">删除</div>
                         </td>
                     </tr>
                 `).join('');
+
+                // 初始化滑动事件
+                initSwipeEvents();
             } catch (e) {
                 showMessage('加载失败', 'error');
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-state">加载失败</td></tr>';
@@ -467,6 +498,90 @@
             } catch (e) {
                 showMessage('删除失败', 'error');
             }
+        }
+
+        // 右滑删除处理
+        function handleSwipeDelete(password, filename) {
+            deleteImage(password, filename);
+        }
+
+        // 初始化滑动事件
+        function initSwipeEvents() {
+            const rows = document.querySelectorAll('.swipe-row');
+            let startX = 0;
+            let currentX = 0;
+            let isDragging = false;
+
+            rows.forEach(row => {
+                const content = row.querySelector('.swipe-content');
+                const deleteBtn = row.querySelector('.swipe-delete');
+                let translateX = 0;
+
+                // 关闭其他已打开的滑动行
+                const closeOtherRows = () => {
+                    rows.forEach(otherRow => {
+                        if (otherRow !== row) {
+                            otherRow.querySelector('.swipe-content').style.transform = 'translateX(0)';
+                            otherRow.querySelector('.swipe-delete').classList.remove('show');
+                        }
+                    });
+                };
+
+                row.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    isDragging = true;
+                    closeOtherRows();
+                }, { passive: true });
+
+                row.addEventListener('touchmove', (e) => {
+                    if (!isDragging) return;
+                    currentX = e.touches[0].clientX;
+                    const diff = startX - currentX; // 左滑时 diff > 0
+
+                    // 只响应左滑
+                    if (diff > 0) {
+                        translateX = Math.min(diff, 80);
+                        content.style.transform = `translateX(-${translateX}px)`;
+
+                        if (translateX >= 60) {
+                            deleteBtn.classList.add('show');
+                        } else {
+                            deleteBtn.classList.remove('show');
+                        }
+                    }
+                }, { passive: true });
+
+                row.addEventListener('touchend', () => {
+                    isDragging = false;
+                    if (translateX < 60) {
+                        content.style.transform = 'translateX(0)';
+                        deleteBtn.classList.remove('show');
+                    } else {
+                        content.style.transform = 'translateX(-60px)';
+                        deleteBtn.classList.add('show');
+                    }
+                    translateX = 0;
+                }, { passive: true });
+
+                // 点击内容区域关闭滑动
+                content.addEventListener('click', () => {
+                    if (translateX > 0) {
+                        content.style.transform = 'translateX(0)';
+                        deleteBtn.classList.remove('show');
+                        translateX = 0;
+                    }
+                });
+            });
+
+            // 点击空白处关闭所有滑动
+            document.querySelector('.table-container').addEventListener('click', (e) => {
+                if (!e.target.closest('.swipe-row')) {
+                    rows.forEach(row => {
+                        row.querySelector('.swipe-content').style.transform = 'translateX(0)';
+                        row.querySelector('.swipe-delete').classList.remove('show');
+                    });
+                }
+            });
         }
 
         // 退出登录
