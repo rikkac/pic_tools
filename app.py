@@ -282,12 +282,15 @@ def list_images():
                 if filename.endswith(f'.{ext}'):
                     password = filename[:-len(ext)-1]  # 去掉扩展名
                     file_type = 'video' if ext in ALLOWED_VIDEO_EXTENSIONS else 'image'
+                    file_path = os.path.join(UPLOAD_FOLDER, filename)
+                    file_size = os.path.getsize(file_path)
                     images.append({
                         'filename': filename,
                         'password': password,
                         'type': file_type,
                         'url': url_for('preview_file', password=password, _external=True),
-                        'view_count': stats.get(password, 0)
+                        'view_count': stats.get(password, 0),
+                        'size': file_size
                     })
                     break
 

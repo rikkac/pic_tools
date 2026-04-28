@@ -97,6 +97,26 @@
             border-bottom: 1px solid #333;
         }
 
+        th:nth-child(1) { flex: 2; }
+        th:nth-child(2) { flex: 1; text-align: center; }
+        th:nth-child(3) { flex: 1; text-align: center; }
+        th:nth-child(4) { flex: 1; text-align: center; }
+
+        /* 表头也用 flex 布局 */
+        thead tr {
+            display: flex;
+        }
+
+        thead th {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        thead th:nth-child(1) {
+            justify-content: flex-start;
+        }
+
         /* 可滑动的行 */
         .swipe-row {
             position: relative;
@@ -128,6 +148,7 @@
         .swipe-cell:nth-child(1) { flex: 2; }
         .swipe-cell:nth-child(2) { flex: 1; justify-content: center; }
         .swipe-cell:nth-child(3) { flex: 1; justify-content: center; }
+        .swipe-cell:nth-child(4) { flex: 1; justify-content: center; }
 
         /* 删除按钮层 - 右侧 */
         .swipe-delete {
@@ -158,6 +179,11 @@
         }
 
         .view-count {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .file-size {
             color: #888;
             font-size: 12px;
         }
@@ -427,13 +453,14 @@
                 <thead>
                     <tr>
                         <th>文件名</th>
+                        <th>大小</th>
                         <th>查看</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody id="imageList">
                     <tr>
-                        <td colspan="3" class="loading">加载中...</td>
+                        <td colspan="4" class="loading">加载中...</td>
                     </tr>
                 </tbody>
             </table>
@@ -470,10 +497,17 @@
     </div>
 
     <script>
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '0 MB';
+            const mb = bytes / (1024 * 1024);
+            return mb.toFixed(1) + ' MB';
+        }
+
         // 加载图片列表
         async function loadImages() {
             const tbody = document.getElementById('imageList');
-            tbody.innerHTML = '<tr><td colspan="3" class="loading">加载中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="loading">加载中...</td></tr>';
 
             try {
                 const response = await fetch('/api/images');
@@ -488,16 +522,19 @@
                 document.getElementById('totalCount').textContent = images.length;
 
                 if (images.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="empty-state"><p>暂无图片</p></td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><p>暂无图片</p></td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = images.map(img => `
                     <tr class="swipe-row" data-password="${img.password}" data-filename="${img.filename}">
-                        <td colspan="3" style="padding:0;">
+                        <td colspan="4" style="padding:0;">
                             <div class="swipe-content">
                                 <div class="swipe-cell">
-                                    <span class="filename" onclick="copyPassword('${img.password}')" style="cursor:pointer;">${img.type === 'video' ? '🎬 ' : '🖼️ '}${img.filename}</span>
+                                    <span class="filename" onclick="copyPassword('${img.password}')" style="cursor:pointer;">${img.filename}</span>
+                                </div>
+                                <div class="swipe-cell">
+                                    <span class="file-size">${formatFileSize(img.size)}</span>
                                 </div>
                                 <div class="swipe-cell">
                                     <span class="view-count">${img.view_count || 0}</span>
@@ -515,7 +552,7 @@
                 initSwipeEvents();
             } catch (e) {
                 showMessage('加载失败', 'error');
-                tbody.innerHTML = '<tr><td colspan="3" class="empty-state">加载失败</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">加载失败</td></tr>';
             }
         }
 
