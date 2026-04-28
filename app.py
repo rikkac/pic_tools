@@ -18,7 +18,7 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
 ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB限制
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB限制
 
 # 管理员密码（仅在后端使用，不暴露）
 ADMIN_PASSWORD = "SEAGULL7"
