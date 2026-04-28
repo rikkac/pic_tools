@@ -137,7 +137,8 @@
             display: flex;
         }
 
-        .modal img {
+        .modal img,
+        .modal video {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
@@ -244,19 +245,14 @@
             >
         </div>
 
-        <button class="btn btn-full" id="viewBtn">查看图片</button>
-
-        <!-- 缩略图预览 -->
-        <div class="preview-section" id="previewSection">
-            <img src="" alt="预览" class="preview-image" id="previewImage">
-            <div class="preview-label">点击图片可全屏查看</div>
-        </div>
+        <button class="btn btn-full" id="viewBtn">查看</button>
     </div>
 
     <!-- 全屏模态 -->
     <div class="modal" id="modal">
         <button class="modal-close" id="modalClose">&times;</button>
         <img src="" alt="全屏图片" id="modalImage">
+        <video src="" alt="全屏视频" id="modalVideo" controls style="display: none;"></video>
     </div>
 
     <!-- 底部导航 -->
@@ -291,11 +287,11 @@
             }, 3000);
         }
 
-        // 查看图片
+        // 查看文件
         document.getElementById('viewBtn').addEventListener('click', async function() {
             const password = passwordInput.value.trim();
             if (!password) {
-                showMessage('请输入图片密码', 'error');
+                showMessage('请输入密码', 'error');
                 return;
             }
 
@@ -318,12 +314,11 @@
                 const loginData = await loginResponse.json();
 
                 if (loginData.success) {
-                    // 管理员登录成功，跳转到上传页面
                     window.location.href = '/upload-page';
                     return;
                 }
 
-                // 不是管理员密码，查询图片
+                // 查询文件
                 const response = await fetch('/api/check-password', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -332,41 +327,44 @@
                 const data = await response.json();
 
                 if (data.exists) {
-                    const imageUrl = `/image/${password}`;
-                    const previewSection = document.getElementById('previewSection');
-                    const previewImage = document.getElementById('previewImage');
-                    previewImage.src = imageUrl;
-                    previewSection.classList.add('show');
-                    previewImage.dataset.password = password;
-                    previewImage.dataset.extension = data.extension;
-                    showMessage('图片已找到，点击图片可全屏查看', 'success');
+                    const fileUrl = `/file/${password}`;
+                    const modal = document.getElementById('modal');
+                    const modalImage = document.getElementById('modalImage');
+                    const modalVideo = document.getElementById('modalVideo');
+
+                    if (data.type === 'video') {
+                        modalImage.style.display = 'none';
+                        modalVideo.style.display = 'block';
+                        modalVideo.src = fileUrl;
+                        modalVideo.play();
+                    } else {
+                        modalVideo.pause();
+                        modalVideo.style.display = 'none';
+                        modalImage.style.display = 'block';
+                        modalImage.src = fileUrl;
+                    }
+                    modal.classList.add('show');
                 } else {
-                    showMessage('图片不存在', 'error');
-                    document.getElementById('previewSection').classList.remove('show');
+                    showMessage('文件不存在', 'error');
                 }
             } catch (e) {
                 showMessage('请求失败', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '查看图片';
+                btn.textContent = '查看';
             }
-        });
-
-        // 缩略图点击全屏
-        document.getElementById('previewImage').addEventListener('click', function() {
-            const modal = document.getElementById('modal');
-            const modalImage = document.getElementById('modalImage');
-            modalImage.src = this.src;
-            modal.classList.add('show');
         });
 
         // 关闭模态
         document.getElementById('modalClose').addEventListener('click', function() {
+            const modalVideo = document.getElementById('modalVideo');
+            modalVideo.pause();
             document.getElementById('modal').classList.remove('show');
         });
 
         document.getElementById('modal').addEventListener('click', function(e) {
             if (e.target === this) {
+                document.getElementById('modalVideo').pause();
                 this.classList.remove('show');
             }
         });

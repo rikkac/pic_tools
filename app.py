@@ -12,9 +12,11 @@ app.secret_key = secrets.token_hex(32)
 
 # 配置
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
+ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB限制
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB限制
 
 # 管理员密码（仅在后端使用，不暴露）
 ADMIN_PASSWORD = "SEAGULL7"
@@ -25,6 +27,24 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def is_image(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+
+def is_video(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+
+
+def get_file_type(filename):
+    """获取文件类型：image 或 video"""
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    if ext in ALLOWED_IMAGE_EXTENSIONS:
+        return 'image'
+    elif ext in ALLOWED_VIDEO_EXTENSIONS:
+        return 'video'
+    return None
 
 
 def generate_password():
@@ -70,8 +90,12 @@ def check_password():
     if not password:
         return jsonify({'exists': False})
 
-    image_path = password_exists(password)
-    return jsonify({'exists': image_path is not None, 'extension': os.path.splitext(image_path)[1][1:] if image_path else None})
+    file_path = password_exists(password)
+    if file_path:
+        ext = os.path.splitext(file_path)[1][1:]
+        file_type = 'video' if ext in ALLOWED_VIDEO_EXTENSIONS else 'image'
+        return jsonify({'exists': True, 'extension': ext, 'type': file_type})
+    return jsonify({'exists': False})
 
 
 @app.route('/image/<password>')
@@ -84,6 +108,26 @@ def get_image(password):
         return "图片不存在", 404
 
     return send_from_directory(app.config['UPLOAD_FOLDER'], os.path.basename(image_path))
+
+
+@app.route('/file/<password>')
+def get_file(password):
+    """获取文件（图片或视频）"""
+    password = password.upper()
+    file_path = password_exists(password)
+
+    if not file_path:
+        return "文件不存在", 404
+
+    from flask import make_response
+    import mimetypes
+
+    filename = os.path.basename(file_path)
+    mime_type, _ = mimetypes.guess_type(filename)
+
+    response = make_response(send_from_directory(app.config['UPLOAD_FOLDER'], filename))
+    response.headers['Content-Type'] = mime_type or 'application/octet-stream'
+    return response
 
 
 @app.route('/login', methods=['POST'])
@@ -108,7 +152,7 @@ def logout():
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    """上传图片（需要管理员权限）"""
+    """上传图片或视频（需要管理员权限）"""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': '需要管理员权限'}), 401
 
@@ -127,15 +171,19 @@ def upload():
     while password_exists(password):
         password = generate_password()
 
-    # 保存文件
-    filename = f"{password}.jpg"
+    # 获取文件扩展名并保存
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    filename = f"{password}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
+
+    file_type = get_file_type(file.filename)
 
     return jsonify({
         'success': True,
         'password': password,
-        'image_url': url_for('get_image', password=password, _external=True)
+        'file_type': file_type,
+        'url': url_for('get_file', password=password, _external=True)
     })
 
 
@@ -160,20 +208,25 @@ def delete_image(password):
 
 @app.route('/api/images', methods=['GET'])
 def list_images():
-    """获取图片列表（需要管理员权限）"""
+    """获取文件列表（图片和视频，需要管理员权限）"""
     if not session.get('is_admin'):
         return jsonify({'success': False, 'message': '需要管理员权限'}), 401
 
     images = []
     if os.path.exists(UPLOAD_FOLDER):
         for filename in os.listdir(UPLOAD_FOLDER):
-            if filename.endswith('.jpg'):
-                password = filename[:-4]  # 去掉 .jpg 后缀
-                images.append({
-                    'filename': filename,
-                    'password': password,
-                    'url': url_for('get_image', password=password, _external=True)
-                })
+            # 检查所有允许的扩展名
+            for ext in ALLOWED_EXTENSIONS:
+                if filename.endswith(f'.{ext}'):
+                    password = filename[:-len(ext)-1]  # 去掉扩展名
+                    file_type = 'video' if ext in ALLOWED_VIDEO_EXTENSIONS else 'image'
+                    images.append({
+                        'filename': filename,
+                        'password': password,
+                        'type': file_type,
+                        'url': url_for('get_file', password=password, _external=True)
+                    })
+                    break
 
     return jsonify({'success': True, 'images': images})
 

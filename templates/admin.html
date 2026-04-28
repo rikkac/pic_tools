@@ -200,17 +200,28 @@
             height: 100%;
             background: #000;
             z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }
 
         .modal.show {
-            display: block;
+            display: flex;
         }
 
-        .modal img {
-            width: 100%;
-            height: 100%;
+        .modal img,
+        .modal video {
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
             border-radius: 8px;
+        }
+
+        .modal-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .modal-close {
@@ -332,7 +343,10 @@
     <!-- 全屏图片 -->
     <div class="modal" id="imageModal">
         <button class="modal-close" id="modalClose">&times;</button>
-        <img src="" alt="图片预览" id="modalImage">
+        <div class="modal-content">
+            <img src="" alt="图片预览" id="modalImage">
+            <video src="" alt="视频预览" id="modalVideo" controls style="display: none;"></video>
+        </div>
     </div>
 
     <!-- 底部导航 -->
@@ -368,14 +382,14 @@
                 tbody.innerHTML = images.map(img => `
                     <tr>
                         <td>
-                            <span class="filename">${img.filename}</span>
+                            <span class="filename">${img.type === 'video' ? '🎬 ' : '🖼️ '}${img.filename}</span>
                         </td>
                         <td>
                             <span class="password">${img.password}</span>
                         </td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action" onclick="viewImage('${img.url}')">查看</button>
+                                <button class="btn-action" onclick="viewFile('${img.type}', '${img.url}')">查看</button>
                                 <button class="btn-action delete" onclick="deleteImage('${img.password}', '${img.filename}')">删除</button>
                             </div>
                         </td>
@@ -387,22 +401,39 @@
             }
         }
 
-        // 查看图片
-        function viewImage(url) {
+        // 查看文件（图片或视频）
+        function viewFile(type, url) {
             const modal = document.getElementById('imageModal');
             const modalImage = document.getElementById('modalImage');
-            modalImage.src = url;
+            const modalVideo = document.getElementById('modalVideo');
+
+            if (type === 'video') {
+                modalImage.style.display = 'none';
+                modalVideo.style.display = 'block';
+                modalVideo.src = url;
+                modalVideo.play();
+            } else {
+                modalVideo.pause();
+                modalVideo.style.display = 'none';
+                modalImage.style.display = 'block';
+                modalImage.src = url;
+            }
             modal.classList.add('show');
         }
 
         // 关闭按钮
         document.getElementById('modalClose').addEventListener('click', function() {
-            document.getElementById('imageModal').classList.remove('show');
+            const modal = document.getElementById('imageModal');
+            const modalVideo = document.getElementById('modalVideo');
+            modalVideo.pause();
+            modal.classList.remove('show');
         });
 
         // 点击图片外部关闭
         document.getElementById('imageModal').addEventListener('click', function(e) {
             if (e.target === this) {
+                const modalVideo = document.getElementById('modalVideo');
+                modalVideo.pause();
                 this.classList.remove('show');
             }
         });
