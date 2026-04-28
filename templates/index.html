@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>图片查看</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #000;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding-top: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+            color: #FFD700;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #FFD700;
+        }
+
+        input::placeholder {
+            color: #666;
+            letter-spacing: 1px;
+            text-transform: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            background: transparent;
+            border: 1px solid #FFD700;
+            border-radius: 8px;
+            color: #FFD700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+
+        .btn:active {
+            background: #FFD700;
+            color: #000;
+        }
+
+        .btn-full {
+            background: #FFD700;
+            color: #000;
+        }
+
+        .btn-full:active {
+            background: #E6C200;
+        }
+
+        .message {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.error {
+            display: block;
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .message.success {
+            display: block;
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid #FFD700;
+        }
+
+        /* 全屏图片模态 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-section {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid #333;
+            transition: border-color 0.3s;
+        }
+
+        .preview-image:hover {
+            border-color: #FFD700;
+        }
+
+        .preview-label {
+            margin-top: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>图片查看</h1>
+
+        <div id="message" class="message"></div>
+
+        <div class="input-group">
+            <input
+                type="text"
+                id="password"
+                placeholder="请输入图片密码"
+                maxlength="8"
+                autocomplete="off"
+            >
+        </div>
+
+        <button class="btn btn-full" id="viewBtn">查看图片</button>
+
+        <!-- 缩略图预览 -->
+        <div class="preview-section" id="previewSection">
+            <img src="" alt="预览" class="preview-image" id="previewImage">
+            <div class="preview-label">点击图片可全屏查看</div>
+        </div>
+    </div>
+
+    <!-- 全屏模态 -->
+    <div class="modal" id="modal">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <img src="" alt="全屏图片" id="modalImage">
+    </div>
+
+    <script>
+        // 密码输入框限制：只允许大写字母和数字
+        const passwordInput = document.getElementById('password');
+        passwordInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^A-Z0-9]/g, '').toUpperCase();
+        });
+
+        // 阻止粘贴非大写字母和数字
+        passwordInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData('text');
+            const filtered = paste.replace(/[^A-Z0-9]/g, '').toUpperCase();
+            document.execCommand('insertText', false, filtered);
+        });
+
+        // 显示消息
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+            setTimeout(() => {
+                msg.className = 'message';
+            }, 3000);
+        }
+
+        // 查看图片
+        document.getElementById('viewBtn').addEventListener('click', async function() {
+            const password = passwordInput.value.trim();
+            if (!password) {
+                showMessage('请输入图片密码', 'error');
+                return;
+            }
+
+            if (password.length !== 8) {
+                showMessage('密码必须是8位', 'error');
+                return;
+            }
+
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = '查询中...';
+
+            try {
+                // 先尝试管理员登录
+                const loginResponse = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password})
+                });
+                const loginData = await loginResponse.json();
+
+                if (loginData.success) {
+                    // 管理员登录成功，跳转到上传页面
+                    window.location.href = '/upload-page';
+                    return;
+                }
+
+                // 不是管理员密码，查询图片
+                const response = await fetch('/api/check-password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password})
+                });
+                const data = await response.json();
+
+                if (data.exists) {
+                    const imageUrl = `/image/${password}`;
+                    const previewSection = document.getElementById('previewSection');
+                    const previewImage = document.getElementById('previewImage');
+                    previewImage.src = imageUrl;
+                    previewSection.classList.add('show');
+                    previewImage.dataset.password = password;
+                    previewImage.dataset.extension = data.extension;
+                    showMessage('图片已找到，点击图片可全屏查看', 'success');
+                } else {
+                    showMessage('图片不存在', 'error');
+                    document.getElementById('previewSection').classList.remove('show');
+                }
+            } catch (e) {
+                showMessage('请求失败', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '查看图片';
+            }
+        });
+
+        // 缩略图点击全屏
+        document.getElementById('previewImage').addEventListener('click', function() {
+            const modal = document.getElementById('modal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = this.src;
+            modal.classList.add('show');
+        });
+
+        // 关闭模态
+        document.getElementById('modalClose').addEventListener('click', function() {
+            document.getElementById('modal').classList.remove('show');
+        });
+
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+            }
+        });
+
+        // 回车查看图片
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('viewBtn').click();
+            }
+        });
+    </script>
+</body>
+</html>

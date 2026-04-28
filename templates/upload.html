@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>上传图片</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #000;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding-top: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+            color: #FFD700;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: #FFD700;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            background: transparent;
+            border: 1px solid #FFD700;
+            border-radius: 8px;
+            color: #FFD700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+
+        .btn:active {
+            background: #FFD700;
+            color: #000;
+        }
+
+        .btn-full {
+            background: #FFD700;
+            color: #000;
+        }
+
+        .btn-full:active {
+            background: #E6C200;
+        }
+
+        .btn-danger {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .btn-danger:active {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .message {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.error {
+            display: block;
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .message.success {
+            display: block;
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid #FFD700;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            display: block;
+            text-align: center;
+            padding: 40px 20px;
+            border: 2px dashed #333;
+            border-radius: 8px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn:hover {
+            border-color: #FFD700;
+            color: #FFD700;
+        }
+
+        .upload-btn.has-file {
+            border-color: #FFD700;
+            color: #FFD700;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #333;
+            border-top-color: #FFD700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            padding: 30px;
+            background: #111;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .password-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: #FFD700;
+            letter-spacing: 8px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            width: auto;
+            padding: 12px 40px;
+            margin: 10px 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>上传图片</h1>
+
+        <a href="/" class="back-link">返回首页</a>
+
+        <div id="message" class="message"></div>
+
+        <input type="file" id="fileInput" class="file-input" accept="image/*">
+        <label for="fileInput" class="upload-btn" id="uploadBtn">
+            点击选择图片
+        </label>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div style="margin-top: 10px; color: #666;">上传中...</div>
+        </div>
+
+        <!-- 上传结果 -->
+        <div class="result-section" id="resultSection">
+            <div class="result-title">上传成功</div>
+            <div class="password-display" id="passwordDisplay"></div>
+            <button class="btn btn-full copy-btn" id="copyBtn">复制密码</button>
+            <div class="btn-group">
+                <button class="btn" id="uploadMoreBtn">继续上传</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 显示消息
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+            setTimeout(() => {
+                msg.className = 'message';
+            }, 3000);
+        }
+
+        // 文件选择
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        fileInput.addEventListener('change', async function() {
+            const file = this.files[0];
+            if (!file) {
+                uploadBtn.textContent = '点击选择图片';
+                uploadBtn.classList.remove('has-file');
+                return;
+            }
+
+            uploadBtn.textContent = '已选择: ' + file.name;
+            uploadBtn.classList.add('has-file');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.getElementById('loading').classList.add('show');
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('passwordDisplay').textContent = data.password;
+                    document.getElementById('resultSection').classList.add('show');
+                    document.querySelector('.upload-btn').style.display = 'none';
+                    showMessage('上传成功', 'success');
+                } else {
+                    showMessage(data.message || '上传失败', 'error');
+                }
+            } catch (e) {
+                showMessage('上传失败', 'error');
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                this.value = '';
+            }
+        });
+
+        // 复制密码
+        document.getElementById('copyBtn').addEventListener('click', async function() {
+            const password = document.getElementById('passwordDisplay').textContent;
+            try {
+                await navigator.clipboard.writeText(password);
+                showMessage('密码已复制', 'success');
+            } catch (e) {
+                // 兼容旧浏览器
+                const input = document.createElement('input');
+                input.value = password;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showMessage('密码已复制', 'success');
+            }
+        });
+
+        // 继续上传
+        document.getElementById('uploadMoreBtn').addEventListener('click', function() {
+            document.getElementById('resultSection').classList.remove('show');
+            document.querySelector('.upload-btn').style.display = 'block';
+            uploadBtn.textContent = '点击选择图片';
+            uploadBtn.classList.remove('has-file');
+        });
+    </script>
+</body>
+</html>
