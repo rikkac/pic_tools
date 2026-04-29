@@ -14,6 +14,7 @@ app.secret_key = secrets.token_hex(32)
 # 配置
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'view_stats.json')
+BAN_STATUS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ban_status.json')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
 ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
@@ -86,6 +87,23 @@ def save_view_stats(stats):
         json.dump(stats, f)
 
 
+def load_ban_status():
+    """加载禁止状态"""
+    if os.path.exists(BAN_STATUS_FILE):
+        try:
+            with open(BAN_STATUS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {'banned': False}
+    return {'banned': False}
+
+
+def save_ban_status(status):
+    """保存禁止状态"""
+    with open(BAN_STATUS_FILE, 'w') as f:
+        json.dump(status, f)
+
+
 def increment_view_count(password):
     """增加查看次数"""
     password = password.upper()
@@ -148,6 +166,12 @@ def get_image(password):
 def get_file(password):
     """获取文件（图片或视频）- 增加查看计数"""
     password = password.upper()
+
+    # 检查是否被禁止查看
+    ban_status = load_ban_status()
+    if ban_status.get('banned', False):
+        return "查看已被禁止", 403
+
     file_path = password_exists(password)
 
     if not file_path:
@@ -170,6 +194,12 @@ def get_file(password):
 def preview_file(password):
     """预览文件（图片或视频）- 不增加查看计数"""
     password = password.upper()
+
+    # 检查是否被禁止查看
+    ban_status = load_ban_status()
+    if ban_status.get('banned', False):
+        return "查看已被禁止", 403
+
     file_path = password_exists(password)
 
     if not file_path:
@@ -224,6 +254,28 @@ def clear_all():
         save_view_stats({})
 
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/ban-status', methods=['GET'])
+def get_ban_status():
+    """获取禁止状态"""
+    status = load_ban_status()
+    return jsonify({'banned': status.get('banned', False)})
+
+
+@app.route('/api/toggle-ban', methods=['POST'])
+def toggle_ban():
+    """切换禁止状态（需要管理员权限）"""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'message': '需要管理员权限'}), 401
+
+    try:
+        current = load_ban_status()
+        new_status = not current.get('banned', False)
+        save_ban_status({'banned': new_status})
+        return jsonify({'success': True, 'banned': new_status})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 

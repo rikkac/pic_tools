@@ -460,6 +460,7 @@
             <h1>图片管理</h1>
             <div class="header-actions">
                 <button class="btn-small" id="clearAllBtn">清空</button>
+                <button class="btn-small" id="toggleBanBtn">禁止</button>
                 <button class="btn-small danger" id="logoutBtn">注销</button>
             </div>
         </div>
@@ -807,6 +808,43 @@
                 showMessage('清空失败', 'error');
             }
         });
+
+        // 禁止/允许查看所有图片
+        async function updateBanButton() {
+            try {
+                const response = await fetch('/api/ban-status');
+                const data = await response.json();
+                const btn = document.getElementById('toggleBanBtn');
+                if (data.banned) {
+                    btn.textContent = '允许';
+                    btn.classList.add('danger');
+                } else {
+                    btn.textContent = '禁止';
+                    btn.classList.remove('danger');
+                }
+            } catch (e) {
+                console.error('获取禁止状态失败', e);
+            }
+        }
+
+        document.getElementById('toggleBanBtn').addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/toggle-ban', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    updateBanButton();
+                    showToast(data.banned ? '已禁止查看' : '已允许查看');
+                } else {
+                    showMessage(data.message || '操作失败', 'error');
+                }
+            } catch (e) {
+                showMessage('操作失败', 'error');
+            }
+        });
+
+        // 初始化禁止状态
+        updateBanButton();
 
         // 显示消息
         function showMessage(text, type) {
