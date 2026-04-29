@@ -309,8 +309,31 @@
     <script>
         // 密码输入框：允许输入字母和数字，自动转换为大写
         const passwordInput = document.getElementById('password');
+
+        // 处理中文输入法导致的重复输入问题
+        let isComposing = false;
+
+        // 过滤函数
+        function filterPassword(value) {
+            return value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        }
+
+        // 中文输入法开始时记录状态
+        passwordInput.addEventListener('compositionstart', function() {
+            isComposing = true;
+        });
+
+        // 中文输入法结束时执行过滤
+        passwordInput.addEventListener('compositionend', function() {
+            isComposing = false;
+            this.value = filterPassword(this.value);
+        });
+
+        // 输入时过滤（非中文输入法组合状态）
         passwordInput.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            if (!isComposing) {
+                this.value = filterPassword(this.value);
+            }
         });
 
         // 粘贴时也自动转换为大写
