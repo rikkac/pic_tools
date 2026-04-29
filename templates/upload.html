@@ -65,6 +65,11 @@
             margin-bottom: 12px;
         }
 
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .btn:active {
             background: #FFD700;
             color: #000;
@@ -461,7 +466,7 @@
         </label>
 
         <!-- 确认上传按钮 -->
-        <button class="btn btn-full" id="confirmUploadBtn" style="display: none;">确认上传</button>
+        <button class="btn btn-full" id="confirmUploadBtn" disabled>确认上传</button>
 
         <!-- 压缩选项 -->
         <div class="compression-options" id="compressionOptions">
@@ -646,7 +651,7 @@
             if (!selectedFile) {
                 uploadBtn.textContent = '点击选择图片';
                 uploadBtn.classList.remove('has-file');
-                confirmUploadBtn.style.display = 'none';
+                confirmUploadBtn.disabled = true;
                 // 恢复压缩选项
                 compressionToggle.disabled = false;
                 compressionToggle.checked = true;
@@ -673,11 +678,11 @@
                 compressionInfo.classList.remove('show');
                 showMessage('视频文件不支持压缩，已自动关闭', 'success');
                 compressedFile = selectedFile;
-                confirmUploadBtn.style.display = 'block';
+                confirmUploadBtn.disabled = false;
             } else if (compressionToggle.checked) {
                 // 图片且开启压缩，立即压缩
                 const quality = parseInt(qualitySlider.value) / 100;
-                confirmUploadBtn.style.display = 'none'; // 隐藏上传按钮，压缩中
+                confirmUploadBtn.disabled = true; // 禁用上传按钮，压缩中
                 progressContainer.classList.add('show');
                 progressFill.style.width = '0%';
                 progressText.textContent = '压缩中...';
@@ -695,12 +700,12 @@
                     compressionInfo.classList.remove('show');
                 }
                 progressContainer.classList.remove('show');
-                confirmUploadBtn.style.display = 'block';
+                confirmUploadBtn.disabled = false;
             } else {
                 // 关闭压缩
                 compressedFile = selectedFile;
                 compressionInfo.classList.remove('show');
-                confirmUploadBtn.style.display = 'block';
+                confirmUploadBtn.disabled = false;
             }
         });
 
@@ -714,7 +719,7 @@
             const file = selectedFile;
             const quality = parseInt(this.value) / 100;
 
-            confirmUploadBtn.style.display = 'none';
+            confirmUploadBtn.disabled = true;
             progressContainer.classList.add('show');
             progressFill.style.width = '0%';
             progressText.textContent = '压缩中...';
@@ -746,7 +751,7 @@
             }
 
             progressContainer.classList.remove('show');
-            confirmUploadBtn.style.display = 'block';
+            confirmUploadBtn.disabled = false;
             isCompressing = false;
         });
 
@@ -761,8 +766,8 @@
             const formData = new FormData();
             formData.append('file', uploadFile);
 
-            // 隐藏确认按钮，显示进度条
-            confirmUploadBtn.style.display = 'none';
+            // 禁用确认按钮，显示进度条
+            confirmUploadBtn.disabled = true;
             progressContainer.classList.add('show');
             progressFill.style.width = '0%';
             progressText.textContent = '0%';
@@ -835,7 +840,7 @@
             document.querySelector('.upload-btn').style.display = 'block';
             uploadBtn.textContent = '点击选择图片';
             uploadBtn.classList.remove('has-file');
-            confirmUploadBtn.style.display = 'none';
+            confirmUploadBtn.disabled = true;
             selectedFile = null;
             compressedFile = null;
             // 恢复压缩选项
