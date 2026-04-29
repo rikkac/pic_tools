@@ -564,7 +564,7 @@
                                     <span class="file-size">${formatFileSize(img.size)}</span>
                                 </div>
                                 <div class="swipe-cell">
-                                    <span class="view-count">${img.view_count || 0}</span>
+                                    <span class="view-count">${img.type === 'video' ? Math.floor((img.view_count || 0) / 2) : (img.view_count || 0)}</span>
                                 </div>
                                 <div class="swipe-cell">
                                     <button class="btn-action" onclick="viewFile('${img.type}', '${img.url}')">查看</button>
