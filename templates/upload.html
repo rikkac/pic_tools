@@ -563,6 +563,8 @@
 
         // 保存选中的文件
         let selectedFile = null;
+        let compressedFile = null;
+        let isCompressing = false;
 
         // 压缩开关
         compressionToggle.addEventListener('change', function() {
@@ -572,10 +574,7 @@
             }
         });
 
-        // 质量滑块
-        qualitySlider.addEventListener('input', function() {
-            qualityValue.textContent = this.value + '%';
-        });
+        // 质量滑块（已在下面处理）
 
         // 格式化文件大小
         function formatFileSize(bytes) {
@@ -638,9 +637,10 @@
             compressionInfo.classList.add('show');
         }
 
-        fileInput.addEventListener('change', function() {
-            const file = this.files[0];
-            if (!file) {
+        // 选择文件后立即压缩
+        fileInput.addEventListener('change', async function() {
+            selectedFile = this.files[0];
+            if (!selectedFile) {
                 uploadBtn.textContent = '点击选择图片';
                 uploadBtn.classList.remove('has-file');
                 confirmUploadBtn.style.display = 'none';
@@ -649,62 +649,108 @@
                 compressionToggle.checked = true;
                 compressionQuality.classList.add('show');
                 compressionInfo.classList.remove('show');
+                progressContainer.classList.remove('show');
                 selectedFile = null;
+                compressedFile = null;
                 return;
             }
 
-            selectedFile = file;
-            uploadBtn.textContent = '已选择: ' + file.name;
+            uploadBtn.textContent = '已选择: ' + selectedFile.name;
             uploadBtn.classList.add('has-file');
-            confirmUploadBtn.style.display = 'block';
 
             // 显示原文件大小
-            originalSizeEl.textContent = formatFileSize(file.size);
+            originalSizeEl.textContent = formatFileSize(selectedFile.size);
 
             // 处理视频（禁用压缩）
-            const isVideo = file.type.startsWith('video/');
+            const isVideo = selectedFile.type.startsWith('video/');
             if (isVideo) {
                 compressionToggle.checked = false;
                 compressionToggle.disabled = true;
                 compressionQuality.classList.remove('show');
                 compressionInfo.classList.remove('show');
                 showMessage('视频文件不支持压缩，已自动关闭', 'success');
-            } else {
-                compressionInfo.classList.remove('show');
-            }
-        });
-
-        // 确认上传按钮点击事件
-        confirmUploadBtn.addEventListener('click', async function() {
-            if (!selectedFile) return;
-
-            const file = selectedFile;
-            const isImage = file.type.startsWith('image/');
-            const isVideo = file.type.startsWith('video/');
-            const shouldCompress = compressionToggle.checked && isImage;
-
-            if (shouldCompress) {
-                // 压缩图片
+                compressedFile = selectedFile;
+                confirmUploadBtn.style.display = 'block';
+            } else if (compressionToggle.checked) {
+                // 图片且开启压缩，立即压缩
                 const quality = parseInt(qualitySlider.value) / 100;
-                try {
-                    const compressedBlob = await compressImage(file, quality);
-                    updateCompressionInfo(file, compressedBlob);
+                confirmUploadBtn.style.display = 'none'; // 隐藏上传按钮，压缩中
+                progressContainer.classList.add('show');
+                progressFill.style.width = '0%';
+                progressText.textContent = '压缩中...';
 
-                    // 将压缩后的文件转换为 File 对象
-                    const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                try {
+                    const compressedBlob = await compressImage(selectedFile, quality);
+                    compressedFile = new File([compressedBlob], selectedFile.name.replace(/\.[^.]+$/, '.jpg'), {
                         type: 'image/jpeg',
                         lastModified: Date.now()
                     });
-
-                    uploadFile(compressedFile);
+                    updateCompressionInfo(selectedFile, compressedBlob);
                 } catch (e) {
-                    showMessage('压缩失败，使用原文件上传', 'error');
-                    uploadFile(file);
+                    showMessage('压缩失败，使用原文件', 'error');
+                    compressedFile = selectedFile;
+                    compressionInfo.classList.remove('show');
                 }
+                progressContainer.classList.remove('show');
+                confirmUploadBtn.style.display = 'block';
             } else {
-                // 不压缩或视频
-                uploadFile(file);
+                // 关闭压缩
+                compressedFile = selectedFile;
+                compressionInfo.classList.remove('show');
+                confirmUploadBtn.style.display = 'block';
             }
+        });
+
+        // 压缩质量拖动时重新压缩
+        qualitySlider.addEventListener('input', async function() {
+            if (isCompressing || !selectedFile || !selectedFile.type.startsWith('image/') || !compressionToggle.checked) return;
+
+            isCompressing = true;
+            qualityValue.textContent = this.value + '%';
+
+            const file = selectedFile;
+            const quality = parseInt(this.value) / 100;
+
+            confirmUploadBtn.style.display = 'none';
+            progressContainer.classList.add('show');
+            progressFill.style.width = '0%';
+            progressText.textContent = '压缩中...';
+
+            try {
+                const compressedBlob = await compressImage(file, quality);
+                compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+
+                // 更新压缩后的大小显示
+                const originalSize = file.size;
+                const compressedSize = compressedBlob.size;
+                compressedSizeEl.textContent = formatFileSize(compressedSize);
+                originalSizeEl.textContent = formatFileSize(originalSize);
+
+                const ratio = Math.round((1 - compressedSize / originalSize) * 100);
+                if (ratio > 0) {
+                    compressionRatioEl.textContent = '减小 ' + ratio + '%';
+                    compressionRatioEl.style.color = '#4caf50';
+                } else {
+                    compressionRatioEl.textContent = '增加 ' + Math.abs(ratio) + '%';
+                    compressionRatioEl.style.color = '#ff4444';
+                }
+                compressionInfo.classList.add('show');
+            } catch (e) {
+                showMessage('压缩失败', 'error');
+            }
+
+            progressContainer.classList.remove('show');
+            confirmUploadBtn.style.display = 'block';
+            isCompressing = false;
+        });
+
+        // 确认上传按钮点击事件
+        confirmUploadBtn.addEventListener('click', function() {
+            if (!compressedFile) return;
+            uploadFile(compressedFile);
         });
 
         // 上传文件函数
@@ -788,6 +834,7 @@
             uploadBtn.classList.remove('has-file');
             confirmUploadBtn.style.display = 'none';
             selectedFile = null;
+            compressedFile = null;
             // 恢复压缩选项
             compressionToggle.disabled = false;
             compressionToggle.checked = true;
