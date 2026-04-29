@@ -262,6 +262,15 @@
             background: #333;
             border-radius: 2px;
             outline: none;
+            /* 节点标记：10, 30, 50, 70, 90 */
+            background-image: radial-gradient(circle at 0% 50%, #666 4px, transparent 4px),
+                              radial-gradient(circle at 25% 50%, #666 4px, transparent 4px),
+                              radial-gradient(circle at 50% 50%, #666 4px, transparent 4px),
+                              radial-gradient(circle at 75% 50%, #666 4px, transparent 4px),
+                              radial-gradient(circle at 100% 50%, #666 4px, transparent 4px);
+            background-size: 100% 100%;
+            background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
+            background-repeat: no-repeat;
         }
 
         .quality-slider::-webkit-slider-thumb {
@@ -482,7 +491,7 @@
                     <span>压缩质量</span>
                     <span class="quality-value" id="qualityValue">80%</span>
                 </div>
-                <input type="range" class="quality-slider" id="qualitySlider" min="60" max="100" value="80">
+                <input type="range" class="quality-slider" id="qualitySlider" min="10" max="90" step="20" value="70">
             </div>
             <div class="compression-info" id="compressionInfo">
                 <div class="original-size">
