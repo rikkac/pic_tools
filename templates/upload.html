@@ -252,35 +252,104 @@
 
         .quality-value {
             color: #FFD700;
+            font-weight: 500;
         }
 
-        .quality-slider {
-            width: 100%;
+        /* 自定义质量滑块 */
+        .quality-slider-container {
+            position: relative;
+            height: 40px;
+            margin-bottom: 8px;
+        }
+
+        .quality-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
             height: 4px;
-            -webkit-appearance: none;
-            appearance: none;
+            transform: translateY(-50%);
             background: #333;
             border-radius: 2px;
-            outline: none;
-            /* 节点标记：10, 30, 50, 70, 90 */
-            background-image: radial-gradient(circle at 0% 50%, #666 4px, transparent 4px),
-                              radial-gradient(circle at 25% 50%, #666 4px, transparent 4px),
-                              radial-gradient(circle at 50% 50%, #666 4px, transparent 4px),
-                              radial-gradient(circle at 75% 50%, #666 4px, transparent 4px),
-                              radial-gradient(circle at 100% 50%, #666 4px, transparent 4px);
-            background-size: 100% 100%;
-            background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
-            background-repeat: no-repeat;
         }
 
-        .quality-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
+        .quality-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
             background: #FFD700;
-            cursor: pointer;
+            border-radius: 2px;
+            transition: width 0.1s;
+        }
+
+        .quality-nodes {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .quality-node {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #222;
+            border: 2px solid #444;
+            position: relative;
+            z-index: 1;
+            transition: all 0.2s;
+        }
+
+        .quality-node.active {
+            background: #FFD700;
+            border-color: #FFD700;
+            transform: scale(1.1);
+        }
+
+        .quality-node.passed {
+            background: #FFD700;
+            border-color: #FFD700;
+        }
+
+        .quality-thumb {
+            position: absolute;
+            top: 50%;
+            width: 18px;
+            height: 18px;
+            background: #FFD700;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+            transition: left 0.1s, transform 0.1s;
+            z-index: 2;
+        }
+
+        .quality-thumb:active {
+            cursor: grabbing;
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+
+        .quality-labels {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 2px;
+        }
+
+        .quality-label-item {
+            font-size: 10px;
+            color: #555;
+            text-align: center;
+            width: 12px;
+        }
+
+        .quality-label-item.active {
+            color: #FFD700;
         }
 
         .compression-info {
@@ -426,12 +495,16 @@
 
         /* 上传进度条 */
         .progress-container {
-            display: none;
+            visibility: hidden;
+            opacity: 0;
             margin-bottom: 20px;
+            height: 40px;
+            transition: opacity 0.2s, visibility 0.2s;
         }
 
         .progress-container.show {
-            display: block;
+            visibility: visible;
+            opacity: 1;
         }
 
         .progress-text {
@@ -489,9 +562,16 @@
             <div class="compression-quality show" id="compressionQuality">
                 <div class="quality-label">
                     <span>压缩质量</span>
-                    <span class="quality-value" id="qualityValue">80%</span>
+                    <span class="quality-value" id="qualityValue">50</span>
                 </div>
-                <input type="range" class="quality-slider" id="qualitySlider" min="10" max="90" step="20" value="70">
+                <div class="quality-slider-container" id="qualitySliderContainer">
+                    <div class="quality-track">
+                        <div class="quality-fill" id="qualityFill"></div>
+                    </div>
+                    <div class="quality-nodes" id="qualityNodes"></div>
+                    <div class="quality-thumb" id="qualityThumb"></div>
+                </div>
+                <div class="quality-labels" id="qualityLabels"></div>
             </div>
             <div class="compression-info" id="compressionInfo">
                 <div class="original-size">
@@ -569,11 +649,22 @@
         const compressionToggle = document.getElementById('compressionToggle');
         const compressionQuality = document.getElementById('compressionQuality');
         const compressionInfo = document.getElementById('compressionInfo');
-        const qualitySlider = document.getElementById('qualitySlider');
         const qualityValue = document.getElementById('qualityValue');
         const originalSizeEl = document.getElementById('originalSize');
         const compressedSizeEl = document.getElementById('compressedSize');
         const compressionRatioEl = document.getElementById('compressionRatio');
+
+        // 自定义滑块元素
+        const qualitySliderContainer = document.getElementById('qualitySliderContainer');
+        const qualityFill = document.getElementById('qualityFill');
+        const qualityNodes = document.getElementById('qualityNodes');
+        const qualityThumb = document.getElementById('qualityThumb');
+        const qualityLabels = document.getElementById('qualityLabels');
+
+        // 质量节点值
+        const qualitySteps = [10, 30, 50, 70, 90];
+        let currentQuality = 50;
+        let isDragging = false;
 
         // 确认上传按钮
         const confirmUploadBtn = document.getElementById('confirmUploadBtn');
@@ -594,7 +685,7 @@
                 }
             } else if (selectedFile && selectedFile.type.startsWith('image/')) {
                 // 开启压缩时，重新压缩
-                const quality = parseInt(qualitySlider.value) / 100;
+                const quality = currentQuality / 100;
                 confirmUploadBtn.disabled = true;
                 progressContainer.classList.add('show');
                 progressFill.style.width = '0%';
@@ -617,6 +708,139 @@
         });
 
         // 质量滑块（已在下面处理）
+
+        // 初始化自定义滑块
+        function initQualitySlider() {
+            // 创建节点
+            qualityNodes.innerHTML = '';
+            qualitySteps.forEach((val, index) => {
+                const node = document.createElement('div');
+                node.className = 'quality-node';
+                node.dataset.value = val;
+                qualityNodes.appendChild(node);
+            });
+
+            // 创建标签
+            qualityLabels.innerHTML = '';
+            qualitySteps.forEach((val) => {
+                const label = document.createElement('span');
+                label.className = 'quality-label-item';
+                label.textContent = val;
+                qualityLabels.appendChild(label);
+            });
+
+            // 设置初始值
+            setQualityValue(currentQuality, false);
+        }
+
+        // 设置质量值
+        function setQualityValue(value, triggerEvent = true) {
+            // 找到最近的值
+            let closest = qualitySteps[0];
+            let minDiff = Math.abs(value - closest);
+            for (let i = 1; i < qualitySteps.length; i++) {
+                const diff = Math.abs(value - qualitySteps[i]);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = qualitySteps[i];
+                }
+            }
+            currentQuality = closest;
+
+            // 更新显示
+            qualityValue.textContent = currentQuality;
+
+            // 更新滑块位置
+            const index = qualitySteps.indexOf(currentQuality);
+            const percent = index / (qualitySteps.length - 1);
+            // 使用像素精确定位，让 thumb 圆心与节点圆心对齐
+            const containerWidth = qualitySliderContainer.offsetWidth;
+            // CSS中 left:0; right:0，节点圆心在6px和containerWidth-6px
+            // thumb 圆心 = percent * (containerWidth - 12) + 6
+            const thumbLeft = percent * (containerWidth - 12) + 6;
+            qualityThumb.style.left = thumbLeft + 'px';
+            qualityThumb.style.transform = 'translate(-50%, -50%)';
+            qualityFill.style.width = (percent * 100) + '%';
+
+            // 更新节点状态
+            const nodes = qualityNodes.querySelectorAll('.quality-node');
+            nodes.forEach((node, i) => {
+                node.classList.remove('active', 'passed');
+                if (i === index) {
+                    node.classList.add('active');
+                } else if (i < index) {
+                    node.classList.add('passed');
+                }
+            });
+
+            // 更新标签状态
+            const labels = qualityLabels.querySelectorAll('.quality-label-item');
+            labels.forEach((label, i) => {
+                label.classList.toggle('active', i === index);
+            });
+
+            // 触发事件
+            if (triggerEvent) {
+                qualitySliderContainer.dispatchEvent(new CustomEvent('qualitychange', { detail: { value: currentQuality } }));
+            }
+        }
+
+        // 计算滑块值的比例
+        function getValueFromPosition(clientX) {
+            const rect = qualitySliderContainer.getBoundingClientRect();
+            // 节点圆心在6px和W-6px，所以点击位置需要映射到节点圆心位置
+            const nodeCenterOffset = 6;
+            let percent = (clientX - rect.left - nodeCenterOffset) / (rect.width - nodeCenterOffset * 2);
+            percent = Math.max(0, Math.min(1, percent));
+            const index = Math.round(percent * (qualitySteps.length - 1));
+            return qualitySteps[index];
+        }
+
+        // 拖动开始
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchmove', onDrag);
+            document.addEventListener('touchend', endDrag);
+            qualityThumb.style.transition = 'none';
+            onDrag(e);
+        }
+
+        // 拖动中
+        function onDrag(e) {
+            if (!isDragging) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const value = getValueFromPosition(clientX);
+            setQualityValue(value, true);
+        }
+
+        // 拖动结束
+        function endDrag() {
+            isDragging = false;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', endDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('touchend', endDrag);
+            qualityThumb.style.transition = '';
+            // 确保吸附到最近节点
+            setQualityValue(currentQuality, true);
+        }
+
+        // 绑定拖动事件
+        qualityThumb.addEventListener('mousedown', startDrag);
+        qualityThumb.addEventListener('touchstart', startDrag);
+
+        // 点击滑块容器也可以移动
+        qualitySliderContainer.addEventListener('click', function(e) {
+            if (e.target === qualityThumb) return;
+            const value = getValueFromPosition(e.clientX);
+            setQualityValue(value, true);
+        });
+
+        // 初始化滑块
+        initQualitySlider();
 
         // 格式化文件大小
         function formatFileSize(bytes) {
@@ -715,7 +939,7 @@
                 confirmUploadBtn.disabled = false;
             } else if (compressionToggle.checked) {
                 // 图片且开启压缩，立即压缩
-                const quality = parseInt(qualitySlider.value) / 100;
+                const quality = currentQuality / 100;
                 confirmUploadBtn.disabled = true; // 禁用上传按钮，压缩中
                 progressContainer.classList.add('show');
                 progressFill.style.width = '0%';
@@ -744,14 +968,13 @@
         });
 
         // 压缩质量拖动时重新压缩
-        qualitySlider.addEventListener('input', async function() {
+        qualitySliderContainer.addEventListener('qualitychange', async function(e) {
             if (isCompressing || !selectedFile || !selectedFile.type.startsWith('image/') || !compressionToggle.checked) return;
 
             isCompressing = true;
-            qualityValue.textContent = this.value + '%';
 
             const file = selectedFile;
-            const quality = parseInt(this.value) / 100;
+            const quality = currentQuality / 100;
 
             confirmUploadBtn.disabled = true;
             progressContainer.classList.add('show');
