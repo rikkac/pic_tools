@@ -575,10 +575,35 @@
         let isCompressing = false;
 
         // 压缩开关
-        compressionToggle.addEventListener('change', function() {
+        compressionToggle.addEventListener('change', async function() {
             compressionQuality.classList.toggle('show', this.checked);
             if (!this.checked) {
                 compressionInfo.classList.remove('show');
+                // 关闭压缩时，使用原始文件
+                if (selectedFile) {
+                    compressedFile = selectedFile;
+                }
+            } else if (selectedFile && selectedFile.type.startsWith('image/')) {
+                // 开启压缩时，重新压缩
+                const quality = parseInt(qualitySlider.value) / 100;
+                confirmUploadBtn.disabled = true;
+                progressContainer.classList.add('show');
+                progressFill.style.width = '0%';
+                progressText.textContent = '压缩中...';
+
+                try {
+                    const compressedBlob = await compressImage(selectedFile, quality);
+                    compressedFile = new File([compressedBlob], selectedFile.name.replace(/\.[^.]+$/, '.jpg'), {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    updateCompressionInfo(selectedFile, compressedBlob);
+                } catch (e) {
+                    showMessage('压缩失败，使用原文件', 'error');
+                    compressedFile = selectedFile;
+                }
+                progressContainer.classList.remove('show');
+                confirmUploadBtn.disabled = false;
             }
         });
 
